@@ -1,0 +1,102 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["MT5TradingBot", "AccountBalance", {"stat": "Average"}],
+          [".", "AccountEquity", {"stat": "Average"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Account Balance & Equity",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "USD"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["MT5TradingBot", "DailyPnL", {"stat": "Sum", "color": "#2ca02c"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Daily Profit & Loss",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "USD"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["MT5TradingBot", "TradesExecuted", {"stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Trades Executed",
+        "period": 3600,
+        "yAxis": {
+          "left": {
+            "label": "Count"
+          }
+        }
+      }
+    },
+    {
+      "type": "log",
+      "properties": {
+        "query": "SOURCE '/aws/ec2/mt5-trading-bot'\n| fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 20",
+        "region": "us-east-1",
+        "title": "Recent Errors",
+        "stacked": false
+      }
+    },
+    {
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/EC2", "CPUUtilization", {"stat": "Average"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "EC2 CPU Utilization",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 100,
+            "label": "Percent"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/RDS", "DatabaseConnections", {"stat": "Average"}],
+          [".", "CPUUtilization", {"stat": "Average"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "RDS Metrics",
+        "period": 300
+      }
+    }
+  ]
+}

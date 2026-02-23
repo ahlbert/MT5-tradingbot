@@ -1,0 +1,61 @@
+graph TB
+    subgraph "User Interface"
+        A[You - Cloud Engineer]
+    end
+
+    subgraph "AWS Cloud Infrastructure"
+        subgraph "VPC - Trading Network"
+            B[EC2 Instance<br/>Ubuntu 24.04<br/>t3.medium]
+            
+            subgraph "EC2 Components"
+                C[MT5 Terminal<br/>via Wine]
+                D[Python 3.11<br/>Trading Bot]
+                E[FinRL ML Agent<br/>PPO Algorithm]
+            end
+            
+            F[RDS PostgreSQL<br/>Trade Database]
+            G[S3 Bucket<br/>Model Storage<br/>Backups]
+        end
+        
+        subgraph "Monitoring & Alerts"
+            H[CloudWatch Logs]
+            I[CloudWatch Metrics]
+            J[SNS Topics<br/>Email/SMS Alerts]
+        end
+        
+        subgraph "Security"
+            K[Security Groups<br/>Port 443, 22]
+            L[IAM Roles<br/>EC2 → RDS, S3]
+            M[Secrets Manager<br/>MT5 Credentials<br/>API Keys]
+        end
+    end
+    
+    subgraph "External Services"
+        N[MT5 Broker<br/>IC Markets/Pepperstone<br/>Demo Account]
+        O[Market Data Feed]
+    end
+
+    A -->|SSH/Deploy| B
+    B --> C
+    C <-->|MetaTrader5 API| D
+    D <-->|Train/Predict| E
+    D -->|Store Trades| F
+    D -->|Save Models| G
+    D -->|Logs| H
+    D -->|Metrics| I
+    I -->|Alerts| J
+    J -->|Notifications| A
+    
+    C <-->|Trading Signals| N
+    N <-->|Price Data| O
+    O -->|Historical Data| E
+    
+    K -.->|Protect| B
+    L -.->|Authorize| B
+    M -.->|Credentials| D
+
+    style B fill:#FF9900
+    style F fill:#527FFF
+    style G fill:#569A31
+    style E fill:#FFD700
+    style N fill:#00D4FF
