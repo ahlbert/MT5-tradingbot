@@ -391,6 +391,16 @@ self.train(market_data, timesteps=200000)  # Instead of 100000
    - Database backups run automatically (7-day retention)
    - Download important data periodically
 
+## Infrastructure Security Notes
+
+- **Secrets Manager for all credentials**: This deployment stores MT5 credentials and RDS master credentials in AWS Secrets Manager. Avoid committing secrets to `terraform.tfvars` or source control. Use Secrets Manager or environment-specific secret tooling.
+
+- **DynamoDB state locking**: The Terraform S3 backend should be used together with a DynamoDB table for state locking to prevent concurrent state modifications. See `terraform.tfvars.example` and use `-backend-config` during `terraform init` to point to the DynamoDB table.
+
+- **Managed RDS master password**: Terraform is configured to delegate master password handling so the password is not placed on the RDS resource. Rotate the secret in Secrets Manager and, if desired, enable automatic rotation with a Lambda function.
+
+- **Provisioning hardening**: The EC2 user-data script runs non-interactively, builds native dependencies (e.g., TA-Lib C) before Python installs, and provides runtime environment variables to the service via a systemd `EnvironmentFile` (`/home/trader/trading-bot.env`). The `trader` user is not added to the global `sudo` group by default; create narrow `/etc/sudoers.d/` rules if needed.
+
 ---
 
 ## 🎓 Learning & Improvement

@@ -26,6 +26,9 @@ class RiskManager:
         
         self.daily_start_balance = None
         self.daily_losses = 0.0
+        # Track per-position peak profit percentages for trailing stops
+        # Keyed by position ticket or identifier
+        self.position_peaks = {}
         
     def check_risk_limits(self, account_info: Dict[str, Any]) -> bool:
         """Check if risk limits are within acceptable ranges"""
@@ -36,6 +39,17 @@ class RiskManager:
             
             # Check daily loss limit
             current_balance = account_info['balance']
+
+            # Enforce max positions if caller provides current open positions
+            open_positions = account_info.get('open_positions')
+            if open_positions is not None:
+                try:
+                    if int(open_positions) >= int(self.max_positions):
+                        logger.warning(f"Max positions reached: {open_positions} >= {self.max_positions}")
+                        return False
+                except Exception:
+                    # If parsing fails, continue but log
+                    logger.debug(f"Unable to parse open_positions from account_info: {open_positions}")
 
             # Guard division by zero
             if not self.daily_start_balance or self.daily_start_balance <= 0:
@@ -126,13 +140,37 @@ class RiskManager:
             # Close if loss exceeds max risk per trade
             if pnl_pct <= -self.max_risk_per_trade:
                 logger.info(f"Closing position due to stop loss: {pnl_pct:.2%}")
+                # Update daily_losses on realized loss
+                try:
+                    loss_amount = max(0.0, position.get('volume', 0) * (position.get('price_open', 0) - current_price))
+                    self.daily_losses += loss_amount
+                except Exception:
+                    pass
                 return True
             
             # Implement trailing stop (close if price dropped 50% from peak profit)
-            if pnl_pct > 0.02:  # If in profit more than 2%
-                # This is a simplified trailing stop
-                # In production, you'd track peak profit for each position
-                pass
+            ticket = position.get('ticket')
+            # Only start tracking after a small profit threshold
+            profit_threshold = 0.02
+
+            if pnl_pct > profit_threshold:
+                # update peak
+                if ticket is not None:
+                    prev_peak = self.position_peaks.get(ticket, 0.0)
+                    new_peak = max(prev_peak, pnl_pct)
+                    self.position_peaks[ticket] = new_peak
+
+            # if we have a recorded peak and current pnl has fallen to <=50% of peak, close
+            if ticket is not None and ticket in self.position_peaks:
+                peak = self.position_peaks.get(ticket, 0.0)
+                if peak > 0 and pnl_pct <= peak * 0.5:
+                    logger.info(f"Trailing stop triggered for ticket {ticket}: pnl={pnl_pct:.2%}, peak={peak:.2%}")
+                    # clear peak to avoid repeated triggers
+                    try:
+                        del self.position_peaks[ticket]
+                    except Exception:
+                        pass
+                    return True
             
             return False
             
@@ -170,4 +208,14 @@ class RiskManager:
         """Reset daily tracking metrics (call at start of each day)"""
         self.daily_start_balance = None
         self.daily_losses = 0.0
+        # Reset any per-position peak tracking
+        self.position_peaks = {}
         logger.info("Daily risk metrics reset")
+
+    def clear_position_peak(self, ticket: Any):
+        """Clear stored peak for a given position when it is closed externally"""
+        try:
+            if ticket in self.position_peaks:
+                del self.position_peaks[ticket]
+        except Exception:
+            pass

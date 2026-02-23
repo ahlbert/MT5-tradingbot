@@ -1,46 +1,64 @@
 #!/bin/bash
 set -e
 
-# Update system
+# Update system non-interactively
+export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get upgrade -y
+apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
 
-# Install dependencies
+# Install dependencies (include build tools for compiling native libs)
 apt-get install -y \
-    python3.11 \
-    python3.11-venv \
-    python3-pip \
-    postgresql-client \
-    wine64 \
-    wget \
-    curl \
-    git \
-    awscli \
-    jq
+  build-essential \
+  automake \
+  autoconf \
+  libtool \
+  python3.11 \
+  python3.11-venv \
+  python3.11-dev \
+  python3-pip \
+  postgresql-client \
+  wine64 \
+  wget \
+  curl \
+  git \
+  awscli \
+  jq
 
 # Create trading bot user
 useradd -m -s /bin/bash trader
-usermod -aG sudo trader
+# Do not add trader to full sudo group by default. If limited elevated
+# permissions are necessary, provision a specific sudoers.d file with
+# least-privilege rules instead of granting blanket sudo access.
 
 # Set up Python environment
 su - trader -c "python3.11 -m venv /home/trader/venv"
 su - trader -c "/home/trader/venv/bin/pip install --upgrade pip"
 
-# Install Python packages
+# Build and install TA-Lib C library prerequisites before installing the
+# Python wrapper so the pip install can link against the system library.
+cd /tmp
+wget https://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz -O ta-lib-0.4.0-src.tar.gz
+tar -xzf ta-lib-0.4.0-src.tar.gz
+cd ta-lib-0.4.0-src
+./configure --prefix=/usr
+make
+make install
+
+# Install Python packages (ta-lib will now build against the system library)
 su - trader -c "/home/trader/venv/bin/pip install \
-    MetaTrader5 \
-    pandas \
-    numpy \
-    psycopg2-binary \
-    boto3 \
-    stable-baselines3 \
-    torch \
-    gymnasium \
-    finrl \
-    ta-lib \
-    scikit-learn \
-    matplotlib \
-    seaborn"
+  MetaTrader5 \
+  pandas \
+  numpy \
+  psycopg2-binary \
+  boto3 \
+  stable-baselines3 \
+  torch \
+  gymnasium \
+  finrl \
+  ta-lib \
+  scikit-learn \
+  matplotlib \
+  seaborn"
 
 # Create directories
 mkdir -p /home/trader/mt5-bot/{logs,models,data}
@@ -95,19 +113,19 @@ EOF
     -s \
     -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json
 
-# Set environment variables
-cat >> /home/trader/.bashrc <<EOF
-
-# Trading Bot Environment
-export DB_ENDPOINT="${db_endpoint}"
-export DB_NAME="${db_name}"
-export DB_USERNAME="${db_username}"
-export SECRET_ARN="${secret_arn}"
-export S3_BUCKET="${s3_bucket}"
-export AWS_REGION="${region}"
-export PYTHONPATH="/home/trader/mt5-bot:\$PYTHONPATH"
-export PATH="/home/trader/venv/bin:\$PATH"
+# Create a simple key=value environment file for systemd (no 'export')
+cat > /home/trader/trading-bot.env <<EOF
+DB_ENDPOINT=${db_endpoint}
+DB_NAME=${db_name}
+DB_USERNAME=${db_username}
+SECRET_ARN=${secret_arn}
+S3_BUCKET=${s3_bucket}
+AWS_REGION=${region}
+PYTHONPATH=/home/trader/mt5-bot:
+PATH=/home/trader/venv/bin:/usr/local/bin:/usr/bin:/bin
 EOF
+chown trader:trader /home/trader/trading-bot.env
+chmod 600 /home/trader/trading-bot.env
 
 # Create systemd service for trading bot
 cat > /etc/systemd/system/trading-bot.service <<EOF
@@ -119,7 +137,7 @@ After=network.target
 Type=simple
 User=trader
 WorkingDirectory=/home/trader/mt5-bot
-Environment="PATH=/home/trader/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/home/trader/trading-bot.env
 ExecStart=/home/trader/venv/bin/python /home/trader/mt5-bot/main.py
 Restart=always
 RestartSec=10

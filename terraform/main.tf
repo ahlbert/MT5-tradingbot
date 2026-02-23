@@ -13,6 +13,8 @@ terraform {
     bucket = "your-terraform-state-bucket"
     key    = "mt5-trading-bot/terraform.tfstate"
     region = "us-east-1"
+    # For state locking, set your DynamoDB table here (recommended)
+    dynamodb_table = var.dynamodb_table
   }
 }
 
@@ -203,7 +205,10 @@ resource "aws_iam_role_policy" "trading_bot_policy" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = aws_secretsmanager_secret.mt5_credentials.arn
+        Resource = [
+          aws_secretsmanager_secret.mt5_credentials.arn,
+          aws_secretsmanager_secret.rds_master.arn
+        ]
       },
       {
         Effect = "Allow"
@@ -226,6 +231,40 @@ resource "aws_iam_role_policy" "trading_bot_policy" {
   })
 }
 
+# DynamoDB table for Terraform state locking
+resource "aws_dynamodb_table" "terraform_locks" {
+  name         = "terraform-locks-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+
+  tags = {
+    Name = "terraform-locks-${var.environment}"
+  }
+}
+
+# Secrets Manager secret for RDS master credentials
+resource "aws_secretsmanager_secret" "rds_master" {
+  name        = "mt5-rds-master-${var.environment}"
+  description = "RDS master credentials for mt5-trading-db"
+
+  tags = {
+    Name = "mt5-rds-master"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "rds_master_version" {
+  secret_id     = aws_secretsmanager_secret.rds_master.id
+  secret_string = jsonencode({
+    username = var.db_username,
+    password = var.db_password
+  })
+}
+
 resource "aws_iam_instance_profile" "trading_bot_profile" {
   name = "mt5-trading-bot-profile"
   role = aws_iam_role.trading_bot_role.name
@@ -235,6 +274,8 @@ resource "aws_iam_instance_profile" "trading_bot_profile" {
 resource "aws_instance" "trading_bot" {
   ami           = var.ubuntu_ami # Ubuntu 24.04 LTS
   instance_type = var.instance_type
+  # Optional SSH key name (null if not provided)
+  key_name      = var.ssh_key_name
 
   subnet_id                   = aws_subnet.public_subnet.id
   vpc_security_group_ids      = [aws_security_group.trading_bot_sg.id]
@@ -286,7 +327,10 @@ resource "aws_db_instance" "trading_db" {
 
   db_name  = var.db_name
   username = var.db_username
-  password = var.db_password
+  # Password is managed via Secrets Manager. Enable RDS to manage the master
+  # user password lifecycle. Terraform will not store the plaintext password
+  # on the DB resource when this is enabled.
+  manage_master_user_password = true
 
   db_subnet_group_name   = aws_db_subnet_group.trading_db_subnet.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
@@ -310,6 +354,16 @@ resource "aws_s3_bucket" "model_storage" {
   tags = {
     Name = "mt5-model-storage"
   }
+}
+
+# Explicitly block public access to the model storage bucket
+resource "aws_s3_bucket_public_access_block" "model_storage_block" {
+  bucket = aws_s3_bucket.model_storage.id
+
+  block_public_acls   = true
+  block_public_policy = true
+  ignore_public_acls  = true
+  restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket_versioning" "model_storage_versioning" {

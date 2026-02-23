@@ -5,7 +5,7 @@
       "properties": {
         "metrics": [
           ["MT5TradingBot", "AccountBalance", {"stat": "Average"}],
-          [".", "AccountEquity", {"stat": "Average"}]
+          ["MT5TradingBot", "AccountEquity", {"stat": "Average"}]
         ],
         "view": "timeSeries",
         "stacked": false,
@@ -29,7 +29,7 @@
         "stacked": false,
         "region": "us-east-1",
         "title": "Daily Profit & Loss",
-        "period": 300,
+        "period": 3600,
         "yAxis": {
           "left": {
             "label": "USD"
@@ -68,7 +68,7 @@
       "type": "metric",
       "properties": {
         "metrics": [
-          ["AWS/EC2", "CPUUtilization", {"stat": "Average"}]
+          ["AWS/EC2", "CPUUtilization", "InstanceId", "REPLACE_WITH_INSTANCE_ID", {"stat": "Average"}]
         ],
         "view": "timeSeries",
         "stacked": false,
@@ -88,14 +88,18 @@
       "type": "metric",
       "properties": {
         "metrics": [
-          ["AWS/RDS", "DatabaseConnections", {"stat": "Average"}],
-          [".", "CPUUtilization", {"stat": "Average"}]
+          ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "REPLACE_WITH_DB_INSTANCE_IDENTIFIER", {"stat": "Average", "color": "#1f77b4"}],
+          ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "REPLACE_WITH_DB_INSTANCE_IDENTIFIER", {"stat": "Average", "color": "#ff7f0e", "yAxis": "right"}]
         ],
         "view": "timeSeries",
         "stacked": false,
         "region": "us-east-1",
         "title": "RDS Metrics",
-        "period": 300
+        "period": 300,
+        "yAxis": {
+          "left": {"label": "Connections"},
+          "right": {"label": "Percent", "min": 0, "max": 100}
+        }
       }
     }
   ]

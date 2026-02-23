@@ -98,11 +98,26 @@ An intelligent, self-learning trading bot for MetaTrader 5 that uses reinforceme
 # 1. Configure your settings
 cd terraform
 cp terraform.tfvars.example terraform.tfvars
-nano terraform.tfvars  # Update with your values
+nano terraform.tfvars  # Update with your values (do NOT commit this file)
 
-# 2. Deploy infrastructure
-terraform init
+# Note on remote state locking and secrets
+- The Terraform backend uses an S3 bucket for state and a DynamoDB table for locks. If you don't have
+    the DynamoDB table yet, either create it (`terraform-locks-<env>`) or provide it during `terraform init`
+    via `-backend-config`. Example:
+
+```bash
+# from the terraform directory
+terraform init -backend-config="bucket=your-terraform-state-bucket" \
+    -backend-config="key=mt5-trading-bot/terraform.tfstate" \
+    -backend-config="region=us-east-1" \
+    -backend-config="dynamodb_table=terraform-locks-dev"
 terraform apply
+```
+
+# Secrets & RDS
+- RDS master credentials are stored in AWS Secrets Manager by the Terraform deployment. Avoid placing
+    the DB password in `terraform.tfvars` or source control. The deployment enables managed master
+    password handling so Terraform does not keep the plaintext password on the DB resource.
 
 # 3. Deploy bot code
 scp -r bot/* ubuntu@<EC2_IP>:/home/trader/mt5-bot/
@@ -232,11 +247,20 @@ self.model = PPO(
 
 ## 🔐 Security
 
-- All credentials stored in AWS Secrets Manager
-- Encrypted RDS database
-- Security groups restrict access
+- All credentials stored in AWS Secrets Manager (do not commit secrets to tfvars)
+- Encrypted RDS database (master password managed via Secrets Manager)
+- Security groups restrict access; SSH should be limited to a small set of CIDRs
 - Regular automated backups
-- SSH access limited to your IP
+- SSH access limited to your IP (set `allowed_ssh_ips` in `terraform.tfvars`)
+
+Notes about provisioning and `user_data.sh`:
+- The EC2 `user_data` script now runs non-interactively and includes steps to build TA-Lib's C
+    dependency before installing the Python `ta-lib` package.
+- The provisioning script no longer adds the `trader` user to the global `sudo` group by default.
+    If elevated commands are required, create a narrowly scoped `/etc/sudoers.d/` entry instead.
+- Runtime environment variables are provided to the service using a systemd `EnvironmentFile` at
+    `/home/trader/trading-bot.env` (created by the instance user data). This avoids exporting secrets
+    in shell startup files.
 
 ## 📈 Performance
 

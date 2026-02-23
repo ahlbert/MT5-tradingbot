@@ -31,6 +31,7 @@ resource "aws_cloudwatch_metric_alarm" "low_balance" {
   threshold           = "9000"  # Alert if balance drops below $9,000 (10% loss)
   alarm_description   = "Alert when account balance is low"
   alarm_actions       = [aws_sns_topic.trading_alerts.arn]
+  treat_missing_data  = "notBreaching"
 }
 
 # Alarm: High Daily Loss
@@ -40,11 +41,13 @@ resource "aws_cloudwatch_metric_alarm" "high_daily_loss" {
   evaluation_periods  = "1"
   metric_name         = "DailyPnL"
   namespace           = "MT5TradingBot"
-  period              = "3600"
+  # Aggregate over a full UTC day to detect daily loss totals reliably
+  period              = "86400"
   statistic           = "Sum"
   threshold           = "-400"  # Alert if daily loss exceeds $400 (4% of $10k)
   alarm_description   = "Alert when daily loss is too high"
   alarm_actions       = [aws_sns_topic.trading_alerts.arn]
+  treat_missing_data  = "notBreaching"
 }
 
 # Alarm: No Metrics Received (Bot Down)
@@ -59,6 +62,8 @@ resource "aws_cloudwatch_metric_alarm" "no_metrics" {
   threshold           = "1"
   alarm_description   = "Alert when bot stops sending metrics"
   alarm_actions       = [aws_sns_topic.trading_alerts.arn]
+  # If metrics stop arriving, treat the missing data as breaching so the alarm
+  # fires and indicates the bot or agent is not reporting.
   treat_missing_data  = "breaching"
 }
 
@@ -74,6 +79,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_high_cpu" {
   threshold           = "80"
   alarm_description   = "Alert when RDS CPU is high"
   alarm_actions       = [aws_sns_topic.trading_alerts.arn]
+  treat_missing_data  = "notBreaching"
 
   dimensions = {
     DBInstanceIdentifier = aws_db_instance.trading_db.id
@@ -92,6 +98,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
   threshold           = "2000000000"  # 2GB
   alarm_description   = "Alert when RDS storage is low"
   alarm_actions       = [aws_sns_topic.trading_alerts.arn]
+  treat_missing_data  = "notBreaching"
 
   dimensions = {
     DBInstanceIdentifier = aws_db_instance.trading_db.id

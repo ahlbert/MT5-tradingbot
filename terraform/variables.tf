@@ -27,7 +27,8 @@ variable "ubuntu_ami" {
 variable "allowed_ssh_ips" {
   description = "List of IP addresses allowed to SSH into the EC2 instance"
   type        = list(string)
-  default     = ["0.0.0.0/0"] # CHANGE THIS to your IP for security!
+  # No default to avoid accidentally leaving SSH open; provide your CIDR(s) in terraform.tfvars
+  default     = []
 }
 
 variable "db_instance_class" {
@@ -46,7 +47,6 @@ variable "db_username" {
   description = "PostgreSQL master username"
   type        = string
   default     = "trading_admin"
-  sensitive   = true
 }
 
 variable "db_password" {
@@ -54,6 +54,18 @@ variable "db_password" {
   type        = string
   sensitive   = true
   # Set this via terraform.tfvars or environment variable
+}
+
+variable "dynamodb_table" {
+  description = "DynamoDB table name for Terraform state locking (optional)"
+  type        = string
+  default     = null
+}
+
+variable "ssh_key_name" {
+  description = "Optional SSH keypair name to attach to EC2 (leave null to skip)"
+  type        = string
+  default     = null
 }
 
 variable "mt5_login" {

@@ -24,9 +24,10 @@ graph TB
         end
         
         subgraph "Security"
-            K[Security Groups<br/>HTTPS inbound (443), SSH inbound (22)]
-            L[IAM Roles<br/>EC2 → RDS, S3]
-            M[Secrets Manager<br/>MT5 Credentials<br/>API Keys]
+            K[Security Groups<br/>SSH limited to CIDRs, HTTPS outbound (443)]
+            L[IAM Roles<br/>EC2 -> S3, CloudWatch, SecretsManager]
+            M[Secrets Manager<br/>MT5 & RDS credentials]
+            DDB[DynamoDB<br/>Terraform state lock]
         end
     end
     
@@ -44,6 +45,7 @@ graph TB
     D -->|Save Models| G
     D -->|Logs| H
     D -->|Metrics| I
+    D -->|Secrets via SM| M
     I -->|Alerts| J
     J -->|Notifications| A
     

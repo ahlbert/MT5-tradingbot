@@ -31,11 +31,18 @@ output "cloudwatch_log_group" {
 
 output "ssh_command" {
   description = "SSH command to connect to the EC2 instance"
-  value       = "ssh -i your-key.pem ubuntu@${aws_instance.trading_bot.public_ip}"
+  sensitive   = true
+  value       = "ssh -i ${coalesce(var.ssh_key_name, \"your-key.pem\")} ubuntu@${aws_instance.trading_bot.public_ip}"
 }
 
 output "secrets_manager_arn" {
   description = "Secrets Manager ARN for MT5 credentials"
   value       = aws_secretsmanager_secret.mt5_credentials.arn
+  sensitive   = true
+}
+
+output "rds_secrets_manager_arn" {
+  description = "Secrets Manager ARN for RDS master credentials"
+  value       = aws_secretsmanager_secret.rds_master.arn
   sensitive   = true
 }

@@ -13,7 +13,9 @@ allowed_ssh_ips = ["YOUR_IP_ADDRESS/32"]
 db_instance_class = "db.t3.micro"
 db_name          = "trading_db"
 db_username      = "trading_admin"
-db_password      = "CHANGE_THIS_SECURE_PASSWORD_123!"
+# It's recommended to store the DB password in Secrets Manager. If you must
+# supply it here for initial deployment, set it, then remove it from this file.
+db_password      = "YOUR_DB_PASSWORD"
 
 # MT5 Account Details (Demo account)
 mt5_login    = "YOUR_MT5_DEMO_LOGIN"
@@ -22,3 +24,7 @@ mt5_server   = "ICMarketsSC-Demo" # or your broker's demo server
 
 # Alert configuration
 alert_email = "your-email@example.com"
+
+# Optional: DynamoDB table name for Terraform state locking (create beforehand
+# or let Terraform create it by setting this to the table name)
+# dynamodb_table = "terraform-locks-dev"
