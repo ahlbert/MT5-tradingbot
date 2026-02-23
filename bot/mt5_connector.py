@@ -32,9 +32,27 @@ class MT5Connector:
             else:
                 # Fallback to environment variables
                 import os
-                login = int(os.getenv('MT5_LOGIN'))
+                login_str = os.getenv('MT5_LOGIN')
                 password = os.getenv('MT5_PASSWORD')
                 server = os.getenv('MT5_SERVER')
+
+                missing = []
+                if not login_str:
+                    missing.append('MT5_LOGIN')
+                if not password:
+                    missing.append('MT5_PASSWORD')
+                if not server:
+                    missing.append('MT5_SERVER')
+
+                if missing:
+                    logger.error(f"Missing MT5 credentials in environment: {', '.join(missing)}")
+                    return False
+
+                try:
+                    login = int(login_str)
+                except Exception:
+                    logger.error(f"Invalid MT5_LOGIN value: {login_str}")
+                    return False
             
             # Initialize MT5
             if not mt5.initialize():
@@ -48,10 +66,19 @@ class MT5Connector:
                 return False
             
             self.connected = True
-            self.account_info = mt5.account_info()._asdict()
-            
+            acct = mt5.account_info()
+            if acct is not None:
+                try:
+                    self.account_info = acct._asdict()
+                    logger.info(f"Account balance: {self.account_info.get('balance')}")
+                except Exception:
+                    self.account_info = {}
+                    logger.warning("Connected to MT5 but failed to parse account_info() result")
+            else:
+                self.account_info = {}
+                logger.warning("Connected to MT5 but account_info() returned None")
+
             logger.info(f"Connected to MT5 account: {login} on {server}")
-            logger.info(f"Account balance: {self.account_info['balance']}")
             
             return True
             
@@ -179,12 +206,12 @@ class MT5Connector:
             
             if result is None:
                 return {'success': False, 'error': 'Order send failed'}
-            
-            if result.retcode != mt5.TRADE_RETCODE_DONE:
+
+            if not hasattr(result, 'retcode') or result.retcode != mt5.TRADE_RETCODE_DONE:
                 return {
                     'success': False,
-                    'error': f'Order failed with retcode: {result.retcode}',
-                    'result': result._asdict()
+                    'error': f'Order failed with retcode: {getattr(result, "retcode", None)}',
+                    'result': getattr(result, '_asdict', lambda: None)()
                 }
             
             logger.info(f"Order placed successfully: {result.order}")
@@ -243,10 +270,18 @@ class MT5Connector:
             # Determine close type (opposite of open)
             if position.type == mt5.ORDER_TYPE_BUY:
                 order_type = mt5.ORDER_TYPE_SELL
-                price = mt5.symbol_info_tick(position.symbol).bid
+                tick = mt5.symbol_info_tick(position.symbol)
+                if tick is None:
+                    logger.error(f"Failed to get tick for {position.symbol}: {mt5.last_error()}")
+                    return False
+                price = tick.bid
             else:
                 order_type = mt5.ORDER_TYPE_BUY
-                price = mt5.symbol_info_tick(position.symbol).ask
+                tick = mt5.symbol_info_tick(position.symbol)
+                if tick is None:
+                    logger.error(f"Failed to get tick for {position.symbol}: {mt5.last_error()}")
+                    return False
+                price = tick.ask
             
             # Prepare close request
             request = {
@@ -264,12 +299,20 @@ class MT5Connector:
             }
             
             result = mt5.order_send(request)
-            
+
+            if result is None:
+                logger.error(f"Order send returned None when closing position {ticket}")
+                return False
+
+            if not hasattr(result, 'retcode'):
+                logger.error(f"Order send returned unexpected result when closing position {ticket}: {result}")
+                return False
+
             if result.retcode == mt5.TRADE_RETCODE_DONE:
                 logger.info(f"Position {ticket} closed successfully")
                 return True
             else:
-                logger.error(f"Failed to close position {ticket}: {result.retcode}")
+                logger.error(f"Failed to close position {ticket}: {result.retcode} - {getattr(result, '_asdict', lambda: None)()}" )
                 return False
                 
         except Exception as e:
@@ -279,8 +322,21 @@ class MT5Connector:
     def close_all_positions(self):
         """Close all open positions"""
         positions = self.get_open_positions()
-        
+        attempted = len(positions)
+        succeeded = 0
+        failed = []
+
         for position in positions:
-            self.close_position(position['ticket'])
-        
-        logger.info(f"Closed {len(positions)} positions")
+            try:
+                ok = self.close_position(position['ticket'])
+                if ok:
+                    succeeded += 1
+                else:
+                    failed.append(position['ticket'])
+            except Exception as e:
+                logger.error(f"Exception closing position {position['ticket']}: {e}")
+                failed.append(position['ticket'])
+
+        logger.info(f"Close positions summary: attempted={attempted}, succeeded={succeeded}, failed={len(failed)}")
+        if failed:
+            logger.info(f"Failed tickets: {failed}")

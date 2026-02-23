@@ -24,7 +24,7 @@ graph TB
         end
         
         subgraph "Security"
-            K[Security Groups<br/>Port 443, 22]
+            K[Security Groups<br/>HTTPS inbound (443), SSH inbound (22)]
             L[IAM Roles<br/>EC2 → RDS, S3]
             M[Secrets Manager<br/>MT5 Credentials<br/>API Keys]
         end
@@ -36,6 +36,7 @@ graph TB
     end
 
     A -->|SSH/Deploy| B
+    %% MT5 Terminal runs on the EC2 instance (contained)
     B --> C
     C <-->|MetaTrader5 API| D
     D <-->|Train/Predict| E

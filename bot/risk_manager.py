@@ -36,10 +36,18 @@ class RiskManager:
             
             # Check daily loss limit
             current_balance = account_info['balance']
+
+            # Guard division by zero
+            if not self.daily_start_balance or self.daily_start_balance <= 0:
+                logger.warning(f"Invalid daily_start_balance: {self.daily_start_balance}")
+                return False
+
             daily_loss_pct = (self.daily_start_balance - current_balance) / self.daily_start_balance
-            
+
             if daily_loss_pct >= self.max_daily_loss:
                 logger.warning(f"Daily loss limit reached: {daily_loss_pct:.2%}")
+                # Update daily_losses
+                self.daily_losses += max(0.0, self.daily_start_balance - current_balance)
                 return False
             
             # Check margin level
@@ -71,11 +79,15 @@ class RiskManager:
             risk_amount = account_balance * self.max_risk_per_trade
             
             # Calculate pip value for standard lot (100,000 units)
-            # For EURUSD, 1 pip = $10 per standard lot
-            pip_value_per_lot = 10.0
+            # Use provided pip_value parameter (pip value per unit) to compute pip value per lot
+            # pip_value is the quote currency movement per pip for 1 unit; for standard lot (100,000 units):
+            pip_value_per_lot = pip_value * 100000
             
             # Calculate position size
             # Position size (lots) = Risk Amount / (Stop Loss in Pips × Pip Value per Lot)
+            if stop_loss_pips <= 0:
+                raise ValueError("stop_loss_pips must be > 0")
+
             position_size = risk_amount / (stop_loss_pips * pip_value_per_lot)
             
             # Round to 2 decimal places (standard for lot sizes)

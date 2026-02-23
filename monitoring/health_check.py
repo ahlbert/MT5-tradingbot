@@ -55,50 +55,55 @@ def check_rds_status():
         print(f"❌ RDS Database Error: {e}")
         return False
 
+def get_db_connection():
+    """Return a psycopg2 connection using validated DB_ENDPOINT and env vars"""
+    endpoint = os.getenv('DB_ENDPOINT')
+    if not endpoint:
+        raise ValueError('DB_ENDPOINT is not set')
+
+    host = endpoint.split(':')[0]
+    return psycopg2.connect(
+        host=host,
+        port=5432,
+        database=os.getenv('DB_NAME'),
+        user=os.getenv('DB_USERNAME'),
+        password=os.getenv('DB_PASSWORD')
+    )
+
+
 def check_recent_trades():
     """Check if bot has made recent trades"""
     try:
-        conn = psycopg2.connect(
-            host=os.getenv('DB_ENDPOINT').split(':')[0],
-            port=5432,
-            database=os.getenv('DB_NAME'),
-            user=os.getenv('DB_USERNAME'),
-            password=os.getenv('DB_PASSWORD')
-        )
-        
-        cursor = conn.cursor()
-        
-        # Check trades in last 24 hours
-        cursor.execute("""
-            SELECT COUNT(*) 
-            FROM trades 
-            WHERE open_time >= NOW() - INTERVAL '24 hours'
-        """)
-        
-        count = cursor.fetchone()[0]
-        
-        if count > 0:
-            print(f"✅ Recent Trades: {count} trades in last 24 hours")
-        else:
-            print("⚠️  No trades in last 24 hours")
-        
-        # Get latest trade
-        cursor.execute("""
-            SELECT symbol, order_type, open_time, status
-            FROM trades
-            ORDER BY open_time DESC
-            LIMIT 1
-        """)
-        
-        latest = cursor.fetchone()
-        if latest:
-            print(f"   Latest: {latest[0]} {latest[1]} at {latest[2]}")
-        
-        cursor.close()
-        conn.close()
-        
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                # Check trades in last 24 hours
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM trades 
+                    WHERE open_time >= NOW() - INTERVAL '24 hours'
+                """)
+
+                count = cursor.fetchone()[0]
+
+                if count > 0:
+                    print(f"✅ Recent Trades: {count} trades in last 24 hours")
+                else:
+                    print("⚠️  No trades in last 24 hours")
+
+                # Get latest trade
+                cursor.execute("""
+                    SELECT symbol, order_type, open_time, status
+                    FROM trades
+                    ORDER BY open_time DESC
+                    LIMIT 1
+                """)
+
+                latest = cursor.fetchone()
+                if latest:
+                    print(f"   Latest: {latest[0]} {latest[1]} at {latest[2]}")
+
         return count > 0
-        
+
     except Exception as e:
         print(f"❌ Database Check Error: {e}")
         return False
@@ -106,15 +111,8 @@ def check_recent_trades():
 def check_account_balance():
     """Check current account balance"""
     try:
-        conn = psycopg2.connect(
-            host=os.getenv('DB_ENDPOINT').split(':')[0],
-            port=5432,
-            database=os.getenv('DB_NAME'),
-            user=os.getenv('DB_USERNAME'),
-            password=os.getenv('DB_PASSWORD')
-        )
-        
-        cursor = conn.cursor()
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
         
         # Get latest balance
         cursor.execute("""
@@ -147,9 +145,10 @@ def check_account_balance():
             print("⚠️  No account metrics found")
             return False
         
-        cursor.close()
-        conn.close()
-        
+                return True
+
+        return False
+
     except Exception as e:
         print(f"❌ Account Check Error: {e}")
         return False

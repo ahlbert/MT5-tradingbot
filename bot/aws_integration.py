@@ -7,7 +7,7 @@ import json
 import logging
 import os
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +35,22 @@ class AWSIntegration:
     def _get_sns_topic_arn(self) -> str:
         """Get SNS topic ARN"""
         try:
-            # List topics and find the trading alerts topic
-            response = self.sns_client.list_topics()
-            
-            for topic in response.get('Topics', []):
-                if 'mt5-trading-alerts' in topic['TopicArn']:
-                    return topic['TopicArn']
-            
+            # List topics and find the trading alerts topic (paginated)
+            token = None
+            while True:
+                if token:
+                    response = self.sns_client.list_topics(NextToken=token)
+                else:
+                    response = self.sns_client.list_topics()
+
+                for topic in response.get('Topics', []):
+                    if 'mt5-trading-alerts' in topic.get('TopicArn', ''):
+                        return topic['TopicArn']
+
+                token = response.get('NextToken')
+                if not token:
+                    break
+
             return ''
             
         except Exception as e:
@@ -108,8 +117,10 @@ class AWSIntegration:
             
             s3_key = 'models/trading_model_latest.zip'
             
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            # Ensure directory exists if a directory component is present
+            dirpath = os.path.dirname(local_path)
+            if dirpath:
+                os.makedirs(dirpath, exist_ok=True)
             
             # Download from S3
             self.s3_client.download_file(
@@ -161,7 +172,7 @@ class AWSIntegration:
                         'MetricName': metric_name,
                         'Value': value,
                         'Unit': unit,
-                        'Timestamp': datetime.now()
+                        'Timestamp': datetime.now(timezone.utc)
                     }
                 ]
             )

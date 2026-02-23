@@ -17,7 +17,8 @@ This is a complete ML-powered trading bot for MetaTrader 5 that learns patterns 
 
 ### Prerequisites
 
-1. **AWS Account** with admin access
+1. **AWS Account** with least-privilege permissions
+   - Admin access is not required. Grant the account the specific permissions needed for this deployment: EC2, RDS, S3, IAM (limited), CloudWatch, SNS, and VPC. Prefer PowerUserAccess with targeted IAM permissions for credential management, or create a minimal IAM policy scoped to Terraform actions.
 2. **MT5 Demo Account** from a broker (IC Markets, Pepperstone, etc.)
 3. **Local Machine** with:
    - Terraform installed
@@ -37,7 +38,7 @@ aws configure
 # Enter your AWS Access Key ID, Secret Access Key, and region (us-east-1)
 
 # Create SSH key pair (if you don't have one)
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/mt5-trading-bot-key
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/mt5-trading-bot-key.pem
 ```
 
 ---
@@ -212,13 +213,12 @@ Trading bot started successfully!
 # From your local machine
 cd mt5-trading-bot/monitoring
 
-# Set environment variables
-export DB_ENDPOINT="<your-rds-endpoint>"
-export DB_NAME="trading_db"
-export DB_USERNAME="trading_admin"
-export DB_PASSWORD="your-password"
+# Recommended: retrieve DB credentials from a secrets store (AWS Secrets Manager)
+# or use a local .env file with strict permissions (chmod 600 .env) loaded by your runtime.
+# Minimal transient example using PGPASSWORD (avoids storing password in shell history when prefixed by a space):
+#  PGPASSWORD=your-password python health_check.py
 
-# Run health check
+# Run health check (ensure credentials are provided securely to the script)
 python health_check.py
 ```
 
@@ -263,8 +263,11 @@ tail -f /home/trader/mt5-bot/logs/trading_bot.log
 
 ### Check Database
 ```bash
-# Connect to RDS
-psql -h <RDS_ENDPOINT> -U trading_admin -d trading_db
+# Connect to RDS (recommended: use ~/.pgpass or Secrets Manager)
+# Option A: Use ~/.pgpass (format: host:port:db:username:password) and set chmod 600 ~/.pgpass
+#   psql -h <RDS_ENDPOINT> -U trading_admin -d trading_db
+# Option B: Transient password (avoid storing in shell history):
+#   PGPASSWORD=your_password psql -h <RDS_ENDPOINT> -U trading_admin -d trading_db
 
 # View recent trades
 SELECT * FROM trades ORDER BY open_time DESC LIMIT 10;
@@ -405,13 +408,13 @@ cd /home/trader/mt5-bot
 source /home/trader/venv/bin/activate
 
 # Run training script (create this)
-python scripts/retrain_model.py
+python scripts/retrain_model.py  # note: you may need to create or supply scripts/retrain_model.py
 ```
 
 ### Backtest Strategies
 ```bash
 # Backtest on historical data before going live
-python scripts/backtest.py --start-date 2024-01-01 --end-date 2024-12-31
+python scripts/backtest.py --start-date 2024-01-01 --end-date 2024-12-31  # note: you may need to create or supply scripts/backtest.py
 ```
 
 ---

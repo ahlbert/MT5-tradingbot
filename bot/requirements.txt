@@ -1,13 +1,13 @@
 # Core Trading Libraries
-MetaTrader5==5.0.45
-pandas==2.1.4
-numpy==1.26.2
+MetaTrader5>=5.0.45,<6.0
+pandas>=2.1.4,<3.0
+numpy>=1.26.2,<2.0
 
 # Machine Learning
-stable-baselines3==2.2.1
-torch==2.1.2
-gymnasium==0.29.1
-scikit-learn==1.3.2
+stable-baselines3>=2.2.1,<3.0
+torch>=2.10.0,<3.0
+gymnasium>=0.29.1,<1.0
+scikit-learn>=1.3.2,<2.0
 
 # Technical Analysis
 ta-lib==0.4.28
@@ -16,8 +16,9 @@ ta-lib==0.4.28
 psycopg2-binary==2.9.9
 
 # AWS Integration
-boto3==1.34.14
-botocore==1.34.14
+# Use a recent boto3 and matching botocore (loose pin to allow compatible updates)
+boto3>=1.42.4,<2.0
+botocore>=1.42.4,<2.0
 
 # Visualization
 matplotlib==3.8.2
@@ -25,4 +26,6 @@ seaborn==0.13.0
 
 # Utilities
 python-dotenv==1.0.0
-requests==2.31.0
+requests==2.32.5
+
+# Note: Use Dependabot or Renovate to automate dependency updates; add CI CVE checks.
