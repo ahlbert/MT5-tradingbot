@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Terraform (not needed in Docker)
+terraform/
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+
+# Documentation (not needed in Docker)
+docs/
+*.md
+!requirements.txt
+
+# Monitoring scripts (run separately)
+monitoring/
+
+# Data directories (will be mounted as volumes)
+data/
+models/
+*.pkl
+*.h5
+*.pt
+
+# MT5 files
+*.ex5
+*.dll
+Experts/
+Indicators/
+Scripts/
+MQL5/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak

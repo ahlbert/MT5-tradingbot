@@ -101,7 +101,7 @@ resource "aws_security_group" "rds_sg" {
 
 # allow from Oracle VM IP 
     cidr_blocks = [
-      "${var.oracle_vm_ip}/32"
+      "${var.oracle_vm_ip}/0"
     ]
     description = "PostgreSQL from Oracle VM"
   }

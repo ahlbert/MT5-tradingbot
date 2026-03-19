@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: mt5-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-trading_db}
+      POSTGRES_USER: ${DB_USERNAME:-trading_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - mt5-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-trading_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MT5 Trading Bot
+  trading-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mt5-trading-bot
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      DB_ENDPOINT: postgres:5432
+      DB_NAME: ${DB_NAME:-trading_db}
+      DB_USERNAME: ${DB_USERNAME:-trading_admin}
+      DB_PASSWORD: ${DB_PASSWORD}
+      
+      # MT5 Credentials
+      MT5_LOGIN: ${MT5_LOGIN}
+      MT5_PASSWORD: ${MT5_PASSWORD}
+      MT5_SERVER: ${MT5_SERVER:-ICMarketsSC-Demo}
+      
+      # Risk Management
+      MAX_RISK_PER_TRADE: ${MAX_RISK_PER_TRADE:-0.02}
+      MAX_DAILY_LOSS: ${MAX_DAILY_LOSS:-0.05}
+      MAX_POSITIONS: ${MAX_POSITIONS:-3}
+      
+      # Application Settings
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      # Persistent storage for logs and models
+      - ./data/logs:/app/logs
+      - ./data/models:/app/models
+      - ./data/mt5:/root/.wine
+    networks:
+      - mt5-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Grafana for Monitoring (Optional - Remove if not needed)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mt5-grafana
+    depends_on:
+      - postgres
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - mt5-network
+    restart: unless-stopped
+
+  # pgAdmin for Database Management (Optional - Remove if not needed)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: mt5-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@trading.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    networks:
+      - mt5-network
+    restart: unless-stopped
+
+networks:
+  mt5-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  grafana_data:
+    driver: local
+  pgadmin_data:
+    driver: local
