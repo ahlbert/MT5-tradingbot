@@ -1,0 +1,286 @@
+# Environment variables with credentials
+.env
+.env.local
+.env.*.local
+*.env
+
+# SSH keys
+*.pem
+*.key
+*.ppk
+id_rsa*
+id_ed25519*
+
+# AWS credentials
+.aws/
+credentials
+*.credentials
+
+# Secrets
+secrets/
+*.secret
+secrets.yml
+!secrets.yml.example
+
+# API keys and tokens
+*.token
+api_keys.txt
+
+
+# Terraform state files (contain sensitive data!)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Terraform directory
+.terraform/
+.terraform.lock.hcl
+
+# Terraform variables with sensitive data
+terraform.tfvars
+*.auto.tfvars
+!terraform.tfvars.example
+
+# Terraform plan output
+*.tfplan
+
+
+# Ansible vault password
+.vault_pass
+vault_pass.txt
+*.vault
+
+# Ansible retry files
+*.retry
+
+# Ansible logs
+ansible.log
+
+
+# PYTHON
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+
+# DOCKER
+
+
+# Docker volumes data
+data/
+volumes/
+
+# Docker compose override
+docker-compose.override.yml
+
+
+# LOGS & DATABASES
+
+
+# Log files
+*.log
+logs/
+*.out
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*.sql
+
+
+# ML MODELS & DATA
+
+
+# Trained models
+models/
+*.h5
+*.pkl
+*.pickle
+*.pt
+*.pth
+*.onnx
+*.pb
+
+# Training data
+data/
+datasets/
+*.csv
+*.parquet
+*.feather
+
+# Checkpoints
+checkpoints/
+*.ckpt
+
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
+
+# Cache
+.cache/
+*.cache
+
+# Misc temporary
+*.tmp
+*.temp
+.*.tmp
+
+
+# Uncomment these if you don't want to commit certain docs
+# *.pdf
+# *.docx
+# *.pptx
+
+
+# PROJECT SPECIFIC
+
+# MT5 terminal files
+Experts/
+Indicators/
+Scripts/
+MQL5/
+*.ex5
+*.dll
+
+# Trading logs
+trades/
+trading_logs/
+
+# Backups
+backups/
+*.zip
+
+# Test outputs
+test_results/
+screenshots/
+
+# Reports
+reports/
+*.xlsx
+
+# Keep example/template files
+!.env.example
+!terraform.tfvars.example
+!secrets.yml.example
+!config.example.yml
+
+# Keep important documentation
+!README.md
+!LICENSE
+!CONTRIBUTING.md
+!CHANGELOG.md
+
+# Keep requirements
+!requirements.txt
+!package.json
+!Pipfile

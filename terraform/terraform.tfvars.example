@@ -2,29 +2,21 @@
 # DO NOT commit terraform.tfvars to version control!
 
 aws_region      = "us-east-1"
-environment     = "dev"
-instance_type   = "t3.medium"
-ubuntu_ami      = "ami-0c7217cdde317cfec" # Update with latest Ubuntu 24.04 for your region
 
-# SECURITY: Change this to your actual IP address!
-allowed_ssh_ips = ["YOUR_IP_ADDRESS/32"]
+environment     = "dev"
+
+oracle_vm_ip    = "123.45.67.89" 
 
 # Database configuration
 db_instance_class = "db.t3.micro"
 db_name          = "trading_db"
 db_username      = "trading_admin"
-# It's recommended to store the DB password in Secrets Manager. If you must
-# supply it here for initial deployment, set it, then remove it from this file.
-db_password      = "YOUR_DB_PASSWORD"
 
-# MT5 Account Details (Demo account)
-mt5_login    = "YOUR_MT5_DEMO_LOGIN"
-mt5_password = "YOUR_MT5_DEMO_PASSWORD"
-mt5_server   = "ICMarketsSC-Demo" # or your broker's demo server
+# It's recommended to store the DB password in Secrets Manager. If you must supply it here for initial deployment, set it, then remove it from this file.
+db_password      = "YOUR_DB_PASSWORD"
 
 # Alert configuration
 alert_email = "your-email@example.com"
 
-# Optional: DynamoDB table name for Terraform state locking (create beforehand
-# or let Terraform create it by setting this to the table name)
-# dynamodb_table = "terraform-locks-dev"
+# DynamoDB table name for Terraform state locking (create beforehand or let Terraform create it by setting this to the table name)
+dynamodb_table = "terraform-locks-dev"

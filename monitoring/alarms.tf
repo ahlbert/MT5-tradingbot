@@ -1,5 +1,4 @@
 # CloudWatch Alarms for MT5 Trading Bot
-# Add this to your main.tf or create a separate alarms.tf file
 
 # Alarm: High CPU Usage
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {

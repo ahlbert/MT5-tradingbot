@@ -10,11 +10,9 @@ terraform {
   
   backend "s3" {
     # Update these values with your own
-    bucket = "your-terraform-state-bucket"
+    bucket = "ahlbert-tradingbot-terraform-state"
     key    = "mt5-trading-bot/terraform.tfstate"
     region = "us-east-1"
-    # For state locking, set your DynamoDB table here (recommended)
-    dynamodb_table = var.dynamodb_table
   }
 }
 
@@ -88,61 +86,7 @@ resource "aws_route_table_association" "public_rta" {
   route_table_id = aws_route_table.public_rt.id
 }
 
-# Security Group for EC2
-resource "aws_security_group" "trading_bot_sg" {
-  name        = "mt5-trading-bot-sg"
-  description = "Security group for MT5 trading bot EC2 instance"
-  vpc_id      = aws_vpc.trading_vpc.id
 
-  # SSH access (restrict to your IP in production)
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_ssh_ips
-    description = "SSH access"
-  }
-
-  # HTTPS outbound for MT5 broker connections
-  egress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTPS to MT5 brokers"
-  }
-
-  # HTTP outbound for updates
-  egress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTP for updates"
-  }
-
-  # PostgreSQL to RDS
-  egress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-    description = "PostgreSQL to RDS"
-  }
-
-  # DNS
-  egress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "DNS"
-  }
-
-  tags = {
-    Name = "mt5-trading-bot-sg"
-  }
-}
 
 # Security Group for RDS
 resource "aws_security_group" "rds_sg" {
@@ -154,8 +98,12 @@ resource "aws_security_group" "rds_sg" {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.trading_bot_sg.id]
-    description     = "PostgreSQL from EC2"
+
+# allow from Oracle VM IP 
+    cidr_blocks = [
+      "${var.oracle_vm_ip}/32"
+    ]
+    description = "PostgreSQL from Oracle VM"
   }
 
   tags = {
@@ -163,73 +111,7 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
-# IAM Role for EC2
-resource "aws_iam_role" "trading_bot_role" {
-  name = "mt5-trading-bot-role"
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "trading_bot_policy" {
-  name = "mt5-trading-bot-policy"
-  role = aws_iam_role.trading_bot_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.model_storage.arn,
-          "${aws_s3_bucket.model_storage.arn}/*"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = [
-          aws_secretsmanager_secret.mt5_credentials.arn,
-          aws_secretsmanager_secret.rds_master.arn
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "cloudwatch:PutMetricData",
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sns:Publish"
-        ]
-        Resource = aws_sns_topic.trading_alerts.arn
-      }
-    ]
-  })
-}
 
 # DynamoDB table for Terraform state locking
 resource "aws_dynamodb_table" "terraform_locks" {
@@ -263,45 +145,6 @@ resource "aws_secretsmanager_secret_version" "rds_master_version" {
     username = var.db_username,
     password = var.db_password
   })
-}
-
-resource "aws_iam_instance_profile" "trading_bot_profile" {
-  name = "mt5-trading-bot-profile"
-  role = aws_iam_role.trading_bot_role.name
-}
-
-# EC2 Instance
-resource "aws_instance" "trading_bot" {
-  ami           = var.ubuntu_ami # Ubuntu 24.04 LTS
-  instance_type = var.instance_type
-  # Optional SSH key name (null if not provided)
-  key_name      = var.ssh_key_name
-
-  subnet_id                   = aws_subnet.public_subnet.id
-  vpc_security_group_ids      = [aws_security_group.trading_bot_sg.id]
-  iam_instance_profile        = aws_iam_instance_profile.trading_bot_profile.name
-  associate_public_ip_address = true
-
-  root_block_device {
-    volume_size = 30
-    volume_type = "gp3"
-    encrypted   = true
-  }
-
-  user_data = templatefile("${path.module}/user_data.sh", {
-    db_endpoint = aws_db_instance.trading_db.endpoint
-    db_name     = var.db_name
-    db_username = var.db_username
-    secret_arn  = aws_secretsmanager_secret.mt5_credentials.arn
-    s3_bucket   = aws_s3_bucket.model_storage.id
-    region      = var.aws_region
-  })
-
-  tags = {
-    Name = "mt5-trading-bot"
-  }
-
-  depends_on = [aws_db_instance.trading_db]
 }
 
 # RDS PostgreSQL
@@ -345,6 +188,64 @@ resource "aws_db_instance" "trading_db" {
   tags = {
     Name = "mt5-trading-db"
   }
+}
+
+#IAM User for Oracle VM to access S3
+resource "aws_iam_user" "oracle_bot_user"{
+  name  = "mt5-oracle_bot_user"
+
+  tags  = {
+    Name = "Oracle Bot S3 Access"
+  }
+}
+
+resource "aws_iam_user_policy" "oracle_bot_s3_policy" {
+  name = "mt5-oracle-s3-access"
+  user = aws_iam_user.oracle_bot_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.model_storage.arn,
+          "${aws_s3_bucket.model_storage.arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = aws_secretsmanager_secret.mt5_credentials.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricData"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = aws_sns_topic.trading_alerts.arn
+      }
+    ]
+  })
+}
+
+# Access keys for Oracle VM
+resource "aws_iam_access_key" "oracle_bot_key" {
+  user = aws_iam_user.oracle_bot_user.name
 }
 
 # S3 Bucket for Model Storage

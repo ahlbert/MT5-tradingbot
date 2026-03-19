@@ -1,11 +1,12 @@
-output "ec2_public_ip" {
-  description = "Public IP address of the trading bot EC2 instance"
-  value       = aws_instance.trading_bot.public_ip
+output "oracle_bot_access_key" {
+  description = "AWS Access Key for Oracle VM"
+  value       = aws_iam_access_key.oracle_bot_key.id
 }
 
-output "ec2_instance_id" {
-  description = "Instance ID of the trading bot EC2"
-  value       = aws_instance.trading_bot.id
+output "oracle_bot_secret_key" {
+  description = "AWS Secret Key for Oracle VM"
+  value       = aws_iam_access_key.oracle_bot_key.secret
+  sensitive   = true
 }
 
 output "rds_endpoint" {
@@ -27,12 +28,6 @@ output "sns_topic_arn" {
 output "cloudwatch_log_group" {
   description = "CloudWatch log group name"
   value       = aws_cloudwatch_log_group.trading_bot_logs.name
-}
-
-output "ssh_command" {
-  description = "SSH command to connect to the EC2 instance"
-  sensitive   = true
-  value       = "ssh -i ${coalesce(var.ssh_key_name, \"your-key.pem\")} ubuntu@${aws_instance.trading_bot.public_ip}"
 }
 
 output "secrets_manager_arn" {
