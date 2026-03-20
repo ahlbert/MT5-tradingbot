@@ -160,7 +160,7 @@ resource "aws_db_subnet_group" "trading_db_subnet" {
 resource "aws_db_instance" "trading_db" {
   identifier     = "mt5-trading-db"
   engine         = "postgres"
-  engine_version = "16.1"
+  engine_version = "17.6"
   instance_class = var.db_instance_class
 
   allocated_storage     = 20
@@ -178,7 +178,7 @@ resource "aws_db_instance" "trading_db" {
   db_subnet_group_name   = aws_db_subnet_group.trading_db_subnet.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
-  backup_retention_period = 7
+  backup_retention_period = 0
   backup_window           = "03:00-04:00"
   maintenance_window      = "mon:04:00-mon:05:00"
 

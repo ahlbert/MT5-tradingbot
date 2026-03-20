@@ -284,3 +284,4 @@ reports/
 !requirements.txt
 !package.json
 !Pipfile
+terraform/outputs.txt
